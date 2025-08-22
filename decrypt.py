@@ -10,7 +10,8 @@ import os
 password = getpass.getpass("Enter password: ")
 hash_pass = hashlib.sha256(password.encode()).hexdigest()
 
-url = f"http://localhost/banana/index.php?hash={hash_pass}now"
+seed_url = "http://localhost/banana/index.php"
+url = f"{seed_url}?hash={hash_pass}now"
 response = requests.get(url)
 if response.status_code != 200 or len(response.text.strip()) != 44:
     print("Wrong password or failed to get key.", file=sys.stderr)
