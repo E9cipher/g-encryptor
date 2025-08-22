@@ -23,28 +23,10 @@ if [ -n "$1" ]; then
     OP="$1"
     case "$OP" in
         encrypt)
-            shopt -s nullglob
-            files=("$TARGET_DIR"/*)
-            if [ ${#files[@]} -eq 0 ]; then
-                echo "No files to encrypt."
-            else
-                ./encrypt.py "${files[@]}"
-                rm -f "${files[@]}"
-            fi
-            shopt -u nullglob
-            exit 0
+            encrypt
             ;;
         decrypt)
-            shopt -s nullglob
-            files=("$TARGET_DIR"/*)
-            if [ ${#files[@]} -eq 0 ]; then
-                echo "No files to decrypt."
-            else
-                ./decrypt.py "${files[@]}"
-                rm -f "${files[@]}"
-            fi
-            shopt -u nullglob
-            exit 0
+            decrypt
             ;;
         *)
             echo "Unknown operation: $OP"
@@ -56,6 +38,104 @@ fi
 function logo () {
     echo -e $yellow"$(tail -n +2 config/logo.txt)"
     echo -e $reset ""
+}
+
+function encrypt () {
+    echo -e $yellow"Starting encryption process"$reset
+    sleep 0.3
+
+    if [ ! -d "$TARGET_DIR" ]; then
+        echo -e $red"Target directory not found: $TARGET_DIR"$reset
+        sleep 1
+        menu
+    fi
+
+    # Recursively find all files (exclude .enc files)
+    mapfile -d '' files < <(find "$TARGET_DIR" -type f ! -name "*.enc" -print0 2>/dev/null)
+
+    if [ ${#files[@]} -eq 0 ]; then
+        echo -e $red"No files to encrypt."$reset
+    else
+        for file in "${files[@]}"; do
+            if grep -q "NOENCRYPT" "$file"; then
+                echo -e $yellow"Skipped (NOENCRYPT): $file"$reset
+                continue
+            fi
+
+            result=$(./encrypt.py "$file")
+            case "$result" in
+                ENCRYPTED:*)
+                    orig_file="${result#ENCRYPTED:}"
+                    echo -e $green"Encrypted: $orig_file"$reset
+                    sleep 0.5
+                    ;;
+                SKIPPED:*)
+                    skipped_file="${result#SKIPPED:}"
+                    echo -e $yellow"Skipped: $skipped_file"$reset
+                    sleep 0.5
+                    ;;
+                FAILED:*)
+                    echo -e $red"$result"$reset
+                    sleep 1
+                    ;;
+                *)
+                    echo "$result"
+                    ;;
+            esac
+        done
+    fi
+
+    echo -e $green"Done."$reset
+    sleep 1
+    menu
+}
+
+function decrypt () {
+    echo -e $yellow"Starting decryption process.."$reset
+    sleep 0.3
+
+    if [ ! -d "$TARGET_DIR" ]; then
+        echo -e $red"Target directory not found: $TARGET_DIR"$reset
+        sleep 1
+        menu
+    fi
+
+    # Recursively find all .enc files
+    mapfile -d '' files < <(find "$TARGET_DIR" -type f -name "*.enc" -print0 2>/dev/null)
+
+    if [ ${#files[@]} -eq 0 ]; then
+        echo -e $red"No files to decrypt."$reset
+    else
+        # Pass all files to decrypt.py
+        result=$(./decrypt.py "${files[@]}")
+        # Line-by-line decryption
+        while IFS= read -r line; do
+            case "$line" in
+                DECRYPTED:*)
+                    orig_file="${line#DECRYPTED:}"
+                    echo -e $green"Decrypted: $orig_file"$reset
+                    rm -f "$orig_file.enc" 2>/dev/null
+                    sleep 0.5
+                    ;;
+                SKIPPED:*)
+                    skipped_file="${line#SKIPPED:}"
+                    echo -e $yellow"Skipped: $skipped_file"$reset
+                    sleep 0.5
+                    ;;
+                FAILED:*)
+                    echo -e $red"$line"$reset
+                    sleep 1
+                    ;;
+                *)
+                    echo "$line"
+                    ;;
+            esac
+        done <<< "$result"
+    fi
+
+    echo -e $green"Done"$reset
+    sleep 1
+    menu
 }
 
 function menu () {
@@ -86,100 +166,10 @@ function menu () {
             menu
             ;;
         2)
-            echo -e $yellow"Starting encryption process"$reset
-            sleep 0.3
-
-            if [ ! -d "$TARGET_DIR" ]; then
-                echo -e $red"Target directory not found: $TARGET_DIR"$reset
-                sleep 1
-                menu
-            fi
-
-            # Recursively find all files (exclude .enc files)
-            mapfile -d '' files < <(find "$TARGET_DIR" -type f ! -name "*.enc" -print0 2>/dev/null)
-
-            if [ ${#files[@]} -eq 0 ]; then
-                echo -e $red"No files to encrypt."$reset
-            else
-                for file in "${files[@]}"; do
-                    if grep -q "NOENCRYPT" "$file"; then
-                        echo -e $yellow"Skipped (NOENCRYPT): $file"$reset
-                        continue
-                    fi
-
-                    result=$(./encrypt.py "$file")
-                    case "$result" in
-                        ENCRYPTED:*)
-                            orig_file="${result#ENCRYPTED:}"
-                            echo -e $green"Encrypted: $orig_file"$reset
-                            sleep 0.5
-                            ;;
-                        SKIPPED:*)
-                            skipped_file="${result#SKIPPED:}"
-                            echo -e $yellow"Skipped: $skipped_file"$reset
-                            sleep 0.5
-                            ;;
-                        FAILED:*)
-                            echo -e $red"$result"$reset
-                            sleep 1
-                            ;;
-                        *)
-                            echo "$result"
-                            ;;
-                    esac
-                done
-            fi
-
-            echo -e $green"Done."$reset
-            sleep 1
-            menu
+            encrypt
             ;;
         3)
-            echo -e $yellow"Starting decryption process.."$reset
-            sleep 0.3
-
-            if [ ! -d "$TARGET_DIR" ]; then
-                echo -e $red"Target directory not found: $TARGET_DIR"$reset
-                sleep 1
-                menu
-            fi
-
-            # Recursively find all .enc files
-            mapfile -d '' files < <(find "$TARGET_DIR" -type f -name "*.enc" -print0 2>/dev/null)
-
-            if [ ${#files[@]} -eq 0 ]; then
-                echo -e $red"No files to decrypt."$reset
-            else
-                # Pass all files to decrypt.py
-                result=$(./decrypt.py "${files[@]}")
-                # Line-by-line decryption
-                while IFS= read -r line; do
-                    case "$line" in
-                        DECRYPTED:*)
-                            orig_file="${line#DECRYPTED:}"
-                            echo -e $green"Decrypted: $orig_file"$reset
-                            rm -f "$orig_file.enc" 2>/dev/null
-                            sleep 0.5
-                            ;;
-                        SKIPPED:*)
-                            skipped_file="${line#SKIPPED:}"
-                            echo -e $yellow"Skipped: $skipped_file"$reset
-                            sleep 0.5
-                            ;;
-                        FAILED:*)
-                            echo -e $red"$line"$reset
-                            sleep 1
-                            ;;
-                        *)
-                            echo "$line"
-                            ;;
-                    esac
-                done <<< "$result"
-            fi
-
-            echo -e $green"Done"$reset
-            sleep 1
-            menu
+            decrypt
             ;;
         4)
             echo -n -e $yellow"Enter new directory path: "$reset
