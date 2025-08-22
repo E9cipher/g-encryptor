@@ -1,2 +1,4 @@
 # Ignore .github/
 .github/
+# Ignore .vscode/
+.vscode/
