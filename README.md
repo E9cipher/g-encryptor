@@ -9,7 +9,9 @@ Displays the menu, logo and options for user to select. Outputs every change it 
 ./g-encryptor.sh
 ```
 and this will display the menu with its options
-<img src="images/screenshot-1.png" alt="Menu" width: 60%"/>
+
+<img src="images/screenshot-1.png" alt="Menu" width="60%"/>
+
 ### Machine-friendly
 This is a mode which a script can call the file, pass an argument (encrypt/decrypt) and the script will do the thing
 ```bash
