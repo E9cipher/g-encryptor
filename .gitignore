@@ -2,3 +2,5 @@
 .github/
 # Ignore .vscode/
 .vscode/
+# Ignore .test/
+test/

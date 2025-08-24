@@ -1,8 +1,11 @@
 #!/bin/bash
 # GNOENCRYPT
-source config/colors.txt
 
-CONFIG_FILE="config/config.ini"
+CONFIG_DIR="config/"
+CONFIG_FILE="$CONFIG_DIR/config.ini"
+LOGO_FILE="$CONFIG_DIR/logo.txt"
+source "$CONFIG_DIR/colors.txt"
+
 
 if [ -f "$CONFIG_FILE" ]; then
     TARGET_DIR=$(grep -m1 '^directory=' "$CONFIG_FILE" | cut -d'=' -f2- | xargs)
@@ -36,7 +39,7 @@ if [ -n "$1" ]; then
 fi
 
 function logo () {
-    echo -e $yellow"$(tail -n +2 config/logo.txt)"
+    echo -e $yellow"$(tail -n +2 $LOGO_FILE)"
     echo -e $reset ""
 }
 
@@ -172,6 +175,7 @@ function menu () {
             decrypt
             ;;
         4)
+            echo -e $yellow"Current directory path: $TARGET_DIR"
             echo -n -e $yellow"Enter new directory path: "$reset
             read new_dir
             new_dir="${new_dir%/}"   # remove slash
